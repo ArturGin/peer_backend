@@ -10,6 +10,8 @@ use Fawaz\App\{UserService,TagService,DailyFreeService,McapService,
 use Fawaz\Services\{JWTService,FileReaderService};
 use Fawaz\Database\{UserMapper,PostMapper,ChatMapper,TagMapper,
                     CommentMapper,CommentInfoMapper,ContactusMapper};
+
+use GraphQL\Type\Schema;
 use stdClass;
 
 trait GraphQLSchemaBuilderHelper
@@ -52,5 +54,22 @@ trait GraphQLSchemaBuilderHelper
 
         $userMapperDouble->method('loadById')->willReturn($user);
         $builder->setCurrentUserId('some_token');
+    }
+
+    public function sharedCorrectSchemaUsed(int $uid, int $role, string $schema )
+    {
+        $this->stubCurrentUserAndRole($uid, $role, $this->schemaBuilder, $this, $this->userMapperDouble, $this->tokenDouble);
+
+        $expectedSchemaPath = dirname(__DIR__, levels: 2) . '/' . $schema;
+        $this->fileReader->method('getFileContents')->with($expectedSchemaPath)->willReturn(file_get_contents($expectedSchemaPath));
+        $schema = $this->schemaBuilder->build();
+        $this->assertInstanceOf(Schema::class, $schema);
+    }
+
+    public function checkResolveSearchUserArgsValidity(array $arg, string $error )
+    {
+        $this->stubCurrentUserAndRole(1, 0, $this->schemaBuilder, $this, $this->userMapperDouble, $this->tokenDouble);
+        $result = ($this->resolveSearchUser)(null, $arg);
+        $this->assertEquals(['status' => 'error', 'ResponseCode' => $error], $result);
     }
 }

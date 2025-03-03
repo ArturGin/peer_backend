@@ -1,18 +1,14 @@
 <?php
 
 use PHPUnit\Framework\TestCase;
-use Fawaz\Database\DailyFreeMapper;
-use Fawaz\Database\UserMapper;
-use Fawaz\Database\PostMapper;
-use Fawaz\Database\WalletMapper;
+use Fawaz\Database\{DailyFreeMapper, UserMapper, PostMapper, WalletMapper};
+use Fawaz\App\{UserService, UserInfo, Wallett, DailyFree, UserAdvanced};
 use Psr\Log\LoggerInterface;
-use Fawaz\App\UserService;
-use Fawaz\App\UserInfo;
-use Fawaz\App\Wallett;
-use Fawaz\App\DailyFree;
+use Tests\Helper\IdHelper;
 
 class UserServiceTest extends TestCase
 {
+    use IdHelper;
     private $logger;
     private $dailyFreeMapper;
     private $userMapper;
@@ -178,5 +174,53 @@ class UserServiceTest extends TestCase
         $this->assertArrayHasKey('status', $result);
         $this->assertEquals('error', $result['status']);
         $this->assertStringContainsString('Failed to register user', $result['ResponseCode']);
+    }
+
+    public function testFetchAllAdvanceWithUsers()
+    {
+        $userData = [
+            new UserAdvanced([
+                'uid' => $this->generateUUID(),
+                'email' => 'test@example.com',
+                'int_range' => 1,
+                'username' => 'testuser',
+                'password' => 'hashedpassword',
+                'status' => 'active',
+                'verified' => 1,
+                'slug' => 1,
+                'roles_mask' => 1,
+                'ip' => '127.0.0.1',
+                'img' => 'profile.jpg',
+                'biography' => 'This is a test user.',
+                'amountposts' => 10,
+                'amounttrending' => 2,
+                'isfollowed' => false,
+                'isfollowing' => true,
+                'amountfollower' => 100,
+                'amountfollowed' => 50,
+                'liquidity' => 20.5,
+                'createdat' => (new DateTime())->format('Y-m-d H:i:s.u'),
+                'updatedat' => (new DateTime())->format('Y-m-d H:i:s.u'),
+            ])
+        ];
+
+        $this->userMapper->method('fetchAllAdvance')->willReturn($userData);
+        
+        $result = $this->userService->fetchAllAdvance();
+
+        $this->assertEquals('success', $result['status']);
+        $this->assertEquals(1, $result['counter']);
+        $this->assertEquals('Users data prepared successfully', $result['ResponseCode']);
+        $this->assertCount(1, $result['affectedRows']);
+        $this->assertEquals($userData, $result['affectedRows']);
+    }
+
+    public function testFetchAllAdvanceWithNoUsers()
+    {
+        $this->userMapper->method('fetchAllAdvance')->willReturn([]);
+        
+        $result = $this->userService->fetchAllAdvance();
+
+        $this->assertEquals(['status' => 'error', 'ResponseCode' => 'No users found for the user.'], $result);
     }
 }
